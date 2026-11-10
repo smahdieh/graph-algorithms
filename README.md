@@ -102,7 +102,7 @@ python benchmarks/plot_results.py             # figures + summary table
   colors. It writes `results/results.csv`, `results/environment.json` and
   prints a log (saved in `results/log_benchmark.txt`).
   `--quick` does a small run in about a second.
-- `plot_results.py` writes `runtime`, `memory`, `cover` and `colors`
+- `plot_results.py` writes `runtime`, `cover_memory` and `colors`
   (`.pdf` and `.png`) and `summary_table.tex/.csv` to `results/figures/`.
   The figures are typeset with LaTeX in the ACM template's fonts; add
   `--no-latex` if LaTeX is not installed, and `--copy-to <dir>` to copy the

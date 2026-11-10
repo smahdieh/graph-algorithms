@@ -2,8 +2,7 @@
 
 Writes to results/figures/:
   runtime.pdf        runtime vs. graph size, random and FRB graphs
-  memory.pdf         peak extra memory vs. graph size, random graphs
-  cover.pdf          cover size / optimum on the FRB families
+  cover_memory.pdf   (a) cover size / optimum on FRB, (b) peak memory on random graphs
   colors.pdf         colors used: greedy vs. smallest-last
   summary_table.tex  LaTeX table of per-family averages
   summary_table.csv  the same numbers as CSV
@@ -190,32 +189,33 @@ def plot_runtime(df: pd.DataFrame, out_dir: Path) -> None:
     save(fig, out_dir, "runtime")
 
 
-def plot_memory(df: pd.DataFrame, out_dir: Path) -> None:
-    """Peak extra memory vs. V + E on the random graphs, log-log."""
-    fig, ax = plt.subplots(figsize=(TEXT_WIDTH, 2.6))
+def plot_cover_memory(df: pd.DataFrame, out_dir: Path) -> None:
+    """(a) cover size / optimum per FRB family, (b) peak memory on random graphs."""
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(TEXT_WIDTH, 3.0))
+
+    covers = [LABELS["basic_cover"], LABELS["randomized_cover"]]
+    data = df[(df["dataset"] == "frb") & df["label"].isin(covers)]
+    sns.lineplot(data=data, x="family", y="ratio", hue="label", style="label",
+                 hue_order=covers, style_order=covers, palette=PALETTE, markers=MARKERS,
+                 dashes=False, errorbar=("pi", 100), err_kws={"alpha": 0.18},
+                 markeredgecolor="white", markeredgewidth=0.6, sort=False, ax=ax1, legend=False)
+    ax1.set(xlabel="FRB family", ylabel="Cover size / optimum")
+    ax1.tick_params(axis="x", rotation=45)
+    for tick in ax1.get_xticklabels():
+        tick.set_horizontalalignment("right")
+        tick.set_rotation_mode("anchor")
+    panel(ax1, "a")
+
     data = df[df["dataset"] == "random"]
-    lines(ax, data, "memory_kib", ORDER)
-    linear_reference(ax, data, "memory_kib")
-    log_axes(ax)
-    ax.set(xlabel=SIZE_LABEL, ylabel="Peak extra memory (KiB)")
+    lines(ax2, data, "memory_kib", ORDER)
+    linear_reference(ax2, data, "memory_kib")
+    log_axes(ax2)
+    ax2.set(xlabel=SIZE_LABEL, ylabel="Peak extra memory (KiB)")
+    panel(ax2, "b")
+
     shared_legend(fig, ORDER, reference=True)
     layout(fig, legend_rows=2)
-    save(fig, out_dir, "memory")
-
-
-def plot_cover(df: pd.DataFrame, out_dir: Path) -> None:
-    """Cover size divided by the optimum, per FRB family (band = min-max)."""
-    labels = [LABELS["basic_cover"], LABELS["randomized_cover"]]
-    data = df[(df["dataset"] == "frb") & df["label"].isin(labels)]
-    fig, ax = plt.subplots(figsize=(TEXT_WIDTH, 2.4))
-    sns.lineplot(data=data, x="family", y="ratio", hue="label", style="label",
-                 hue_order=labels, style_order=labels, palette=PALETTE, markers=MARKERS,
-                 dashes=False, errorbar=("pi", 100), err_kws={"alpha": 0.18},
-                 markeredgecolor="white", markeredgewidth=0.6, sort=False, ax=ax, legend=False)
-    ax.set(xlabel="FRB family (5 instances each)", ylabel="Cover size / optimum")
-    shared_legend(fig, labels)
-    layout(fig)
-    save(fig, out_dir, "cover")
+    save(fig, out_dir, "cover_memory")
 
 
 def plot_colors(df: pd.DataFrame, out_dir: Path) -> None:
@@ -266,10 +266,23 @@ def summary(df: pd.DataFrame, out_dir: Path) -> None:
             })
     out = pd.DataFrame(rows)
     out.to_csv(out_dir / "summary_table.csv", index=False)
-    header = " & ".join(out.columns) + r" \\"
-    body = [" & ".join(r) + r" \\" for r in out.astype(str).values.tolist()]
-    tex = [r"\begin{tabular}{l" + "r" * (len(out.columns) - 1) + "}", r"\toprule", header,
-           r"\midrule", *body, r"\bottomrule", r"\end{tabular}"]
+    # LaTeX: grouped header (vertex cover / colors / time) so the table fits
+    # the text width; random graphs are labelled by their vertex count.
+    groups = (r" & & & \multicolumn{3}{c}{Vertex cover} & \multicolumn{2}{c}{Colors}"
+              r" & \multicolumn{4}{c}{Time (ms)} \\")
+    rules = r"\cmidrule(lr){4-6} \cmidrule(lr){7-8} \cmidrule(lr){9-12}"
+    header = (r"Graph & $|V|$ & $|E|$ & Basic & Rand. & Opt. & Greedy & SL"
+              r" & Basic & Rand. & Greedy & SL \\")
+    cells = out.astype(str).values.tolist()
+    body = []
+    for row in cells:
+        if row[0].startswith("random"):
+            row[0] = "random, " + row[0].split("=")[1]
+        body.append(" & ".join(row) + r" \\")
+    first_random = next(i for i, r in enumerate(cells) if r[0].startswith("random"))
+    body.insert(first_random, r"\midrule")
+    tex = [r"\begin{tabular}{l" + "r" * (len(out.columns) - 1) + "}", r"\toprule", groups,
+           rules, header, r"\midrule", *body, r"\bottomrule", r"\end{tabular}"]
     (out_dir / "summary_table.tex").write_text("\n".join(tex) + "\n")
     print(f"wrote {out_dir / 'summary_table'}.tex/.csv")
     print(out.to_string(index=False))
@@ -290,13 +303,12 @@ def main() -> None:
     args.out_dir.mkdir(parents=True, exist_ok=True)
     df = load_frame(args.csv)
     plot_runtime(df, args.out_dir)
-    plot_memory(df, args.out_dir)
-    plot_cover(df, args.out_dir)
+    plot_cover_memory(df, args.out_dir)
     plot_colors(df, args.out_dir)
     summary(df, args.out_dir)
     if args.copy_to:
         args.copy_to.mkdir(parents=True, exist_ok=True)
-        for name in ("runtime", "memory", "cover", "colors"):
+        for name in ("runtime", "cover_memory", "colors"):
             shutil.copy(args.out_dir / f"{name}.pdf", args.copy_to)
         shutil.copy(args.out_dir / "summary_table.tex", args.copy_to)
 
