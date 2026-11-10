@@ -22,15 +22,16 @@ def basic_vertex_cover(graph: Graph) -> set[int]:
     Output: a set of vertices that covers every edge; its size is at most
             twice the size of a minimum vertex cover.
     """
-    # TODO (step 3): implement.
-    # 1. Start with an empty set `cover`.
-    # 2. Loop over every edge (u, v) in graph.edges().
-    # 3. If neither u nor v is in `cover`, the edge is still uncovered:
-    #    add both u and v.
-    #    (Skipping covered edges is the same as "deleting all edges
-    #    incident to u and v" in the pseudocode.)
-    # 4. Return `cover`.
-    raise NotImplementedError
+    # Scanning the edges once is the same as "pick an
+    # edge, delete its incident edges, repeat": an edge whose endpoint is
+    # already in the cover would have been deleted, so it is skipped.
+    # Time O(V + E), extra space O(V).
+    cover: set[int] = set()
+    for u, v in graph.edges():
+        if u not in cover and v not in cover:
+            cover.add(u)
+            cover.add(v)
+    return cover
 
 
 def randomized_vertex_cover(graph: Graph, seed: int | None = None) -> set[int]:
@@ -45,10 +46,14 @@ def randomized_vertex_cover(graph: Graph, seed: int | None = None) -> set[int]:
             is at most twice the size of a minimum vertex cover.
     """
     rng = random.Random(seed)
-    # TODO (step 3): implement.
-    # Same loop as basic_vertex_cover, but for an uncovered edge add only
-    # one endpoint: rng.choice((u, v)).
-    raise NotImplementedError
+    # Same scan as basic_vertex_cover, but only one
+    # endpoint, chosen by a fair coin, joins the cover.
+    # Time O(V + E), extra space O(V).
+    cover: set[int] = set()
+    for u, v in graph.edges():
+        if u not in cover and v not in cover:
+            cover.add(rng.choice((u, v)))
+    return cover
 
 
 def is_vertex_cover(graph: Graph, cover: set[int]) -> bool:
