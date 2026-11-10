@@ -1,0 +1,10 @@
+[project]
+name = "graph-algorithms"
+version = "0.1.0"
+description = "COSC 520 A3: approximation algorithms for vertex cover and graph coloring"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+# Lets tests do `from graph_algorithms.graph import Graph` without installing.
+pythonpath = ["src"]
+testpaths = ["tests"]

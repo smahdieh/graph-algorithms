@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+
+# Downloaded dataset (linked in README instead of committed)
+data/*
+!data/.gitkeep
+!data/download_dataset.py
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
