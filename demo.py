@@ -10,8 +10,6 @@ Usage:
 
 from __future__ import annotations
 
-import itertools
-import random
 import sys
 import time
 from pathlib import Path
@@ -25,6 +23,14 @@ from graph_algorithms.coloring import (  # noqa: E402
     num_colors,
     smallest_last_coloring,
 )
+from graph_algorithms.generators import (  # noqa: E402
+    complete,
+    crown,
+    cycle,
+    random_sparse_graph,
+    random_tree,
+    star,
+)
 from graph_algorithms.graph import Graph, load_dimacs  # noqa: E402
 from graph_algorithms.vertex_cover import (  # noqa: E402
     basic_vertex_cover,
@@ -33,30 +39,13 @@ from graph_algorithms.vertex_cover import (  # noqa: E402
 )
 
 
-def crown(k: int) -> Graph:
-    """Crown graph: bipartite (2 colors), but the worst case for greedy order."""
-    return Graph.from_edges(2 * k, [(2 * i, 2 * j + 1) for i in range(k) for j in range(k) if i != j])
-
-
-def random_tree(n: int, seed: int) -> Graph:
-    """Random tree: vertex i > 0 joins a random earlier vertex (2 colors)."""
-    rng = random.Random(seed)
-    return Graph.from_edges(n, [(i, rng.randrange(i)) for i in range(1, n)])
-
-
-def random_graph(n: int, avg_degree: float, seed: int) -> Graph:
-    """Random graph with n vertices and about n * avg_degree / 2 edges."""
-    rng = random.Random(seed)
-    graph = Graph(n)
-    while graph.num_edges < n * avg_degree / 2:
-        u, v = rng.randrange(n), rng.randrange(n)
-        if u != v:
-            graph.add_edge(u, v)
-    return graph
-
-
 def run_all(graph: Graph) -> dict[str, int]:
-    """Run the four algorithms, check each output, and return its size."""
+    """Run the four algorithms, check each output, and return its size.
+
+    Input:  graph -- the graph to run on.
+    Output: dict with the basic and randomized cover sizes ("basic", "rand")
+            and the colors used by greedy and smallest-last ("greedy", "sl").
+    """
     basic = basic_vertex_cover(graph)
     rand = randomized_vertex_cover(graph, seed=0)
     greedy = greedy_coloring(graph)
@@ -77,9 +66,9 @@ def demo_small_graphs() -> None:
     section("1. Small graphs with known answers")
     graphs = [
         # name, graph, optimal cover, minimum colors
-        ("star, 10 leaves", Graph.from_edges(11, [(0, i) for i in range(1, 11)]), 1, 2),
-        ("complete K6", Graph.from_edges(6, itertools.combinations(range(6), 2)), 5, 6),
-        ("cycle C9", Graph.from_edges(9, [(i, (i + 1) % 9) for i in range(9)]), 5, 3),
+        ("star, 10 leaves", star(10), 1, 2),
+        ("complete K6", complete(6), 5, 6),
+        ("cycle C9", cycle(9), 5, 3),
         ("random tree, 40", random_tree(40, seed=1), None, 2),
         ("crown, 2 x 8", crown(8), 8, 2),  # bipartite, perfect matching of size 8
     ]
@@ -114,7 +103,7 @@ def demo_frb() -> None:
 def demo_timing() -> None:
     """Time each algorithm on one large random graph."""
     section("3. Timing on a random graph")
-    graph = random_graph(100_000, avg_degree=10, seed=42)
+    graph = random_sparse_graph(100_000, avg_degree=10, seed=42)
     print(f"{graph.num_vertices} vertices, {graph.num_edges} edges")
     runs = [
         ("basic cover", lambda: len(basic_vertex_cover(graph)), "vertices"),

@@ -101,6 +101,7 @@ class Graph:
             raise ValueError(f"vertex {v} is out of range 0..{len(self._adj) - 1}")
 
     def __repr__(self) -> str:
+        """Return a short description, e.g. 'Graph(n=4, m=3)'."""
         return f"Graph(n={self.num_vertices}, m={self.num_edges})"
 
 

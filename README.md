@@ -22,8 +22,9 @@ graph-algorithms/
 ├── src/graph_algorithms/
 │   ├── graph.py             # Graph class (adjacency sets) + DIMACS loader
 │   ├── vertex_cover.py      # basic_vertex_cover, randomized_vertex_cover
-│   └── coloring.py          # greedy_coloring, smallest_last_order, smallest_last_coloring
-├── tests/                   # 115 unit tests (pytest)
+│   ├── coloring.py          # greedy_coloring, smallest_last_order, smallest_last_coloring
+│   └── generators.py        # test and benchmark graphs (star, crown, tree, random, ...)
+├── tests/                   # 126 unit tests (pytest)
 ├── data/
 │   └── download_dataset.py  # downloads the FRB graphs into data/frb/ (not committed)
 ├── benchmarks/
@@ -48,7 +49,7 @@ pip install -r requirements.txt
 ## Quick start
 
 ```bash
-pytest                           # 115 unit tests, under 1 s
+pytest                           # 126 unit tests, under 1 s
 python data/download_dataset.py  # FRB dataset, about 6 MB download
 python demo.py                   # demo, about 2 s
 ```

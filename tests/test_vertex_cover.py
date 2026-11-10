@@ -1,10 +1,10 @@
 """Unit tests for the vertex cover algorithms."""
 
 import itertools
-import random
 
 import pytest
 
+from graph_algorithms.generators import complete, path, random_graph, star
 from graph_algorithms.graph import Graph
 from graph_algorithms.vertex_cover import (
     basic_vertex_cover,
@@ -13,15 +13,12 @@ from graph_algorithms.vertex_cover import (
 )
 
 
-def random_graph(n: int, p: float, seed: int) -> Graph:
-    """Erdos-Renyi G(n, p) graph, used only by the tests."""
-    rng = random.Random(seed)
-    edges = [(u, v) for u, v in itertools.combinations(range(n), 2) if rng.random() < p]
-    return Graph.from_edges(n, edges)
-
-
 def min_cover_size(graph: Graph) -> int:
-    """Exact minimum vertex cover size by brute force (small graphs only)."""
+    """Exact minimum vertex cover size by brute force.
+
+    Input:  graph -- a small graph (tries every subset, so n <= ~12).
+    Output: the size of a smallest vertex cover.
+    """
     for k in range(graph.num_vertices + 1):
         for subset in itertools.combinations(graph.vertices(), k):
             if is_vertex_cover(graph, set(subset)):
@@ -29,19 +26,7 @@ def min_cover_size(graph: Graph) -> int:
     return graph.num_vertices
 
 
-def star(n_leaves: int) -> Graph:
-    return Graph.from_edges(n_leaves + 1, [(0, i) for i in range(1, n_leaves + 1)])
-
-
-def complete(n: int) -> Graph:
-    return Graph.from_edges(n, itertools.combinations(range(n), 2))
-
-
-def path(n: int) -> Graph:
-    return Graph.from_edges(n, [(i, i + 1) for i in range(n - 1)])
-
-
-# Run every shared test on both algorithms (randomized with a fixed seed).
+# Shared tests run on both algorithms (randomized with a fixed seed).
 ALGORITHMS = {
     "basic": basic_vertex_cover,
     "randomized": lambda g: randomized_vertex_cover(g, seed=0),
@@ -50,12 +35,17 @@ ALGORITHMS = {
 
 @pytest.fixture(params=list(ALGORITHMS), ids=list(ALGORITHMS))
 def cover_fn(request):
+    """Run a test once with each cover algorithm.
+
+    Output: a function graph -> cover.
+    """
     return ALGORITHMS[request.param]
 
 
 # --- is_vertex_cover helper -------------------------------------------------
 
 def test_is_vertex_cover_detects_uncovered_edge():
+    """The checker accepts a real cover and rejects a set that misses an edge."""
     graph = path(3)  # edges 0-1, 1-2
     assert is_vertex_cover(graph, {1})
     assert not is_vertex_cover(graph, {0})
@@ -64,13 +54,16 @@ def test_is_vertex_cover_detects_uncovered_edge():
 # --- both algorithms ----------------------------------------------------------
 
 def test_graph_without_edges_gives_empty_cover(cover_fn):
+    """With no edges, nothing needs covering, so the cover is empty."""
     assert cover_fn(Graph(0)) == set()
     assert cover_fn(Graph(5)) == set()
 
 
 def test_single_edge(cover_fn):
-    cover = cover_fn(Graph.from_edges(2, [(0, 1)]))
-    assert is_vertex_cover(Graph.from_edges(2, [(0, 1)]), cover)
+    """One edge is covered using only its own endpoints."""
+    graph = Graph.from_edges(2, [(0, 1)])
+    cover = cover_fn(graph)
+    assert is_vertex_cover(graph, cover)
     assert cover <= {0, 1}
 
 
@@ -80,12 +73,14 @@ def test_single_edge(cover_fn):
     ids=["star", "complete", "path", "random"],
 )
 def test_output_is_valid_cover(cover_fn, graph):
+    """Every edge has an endpoint in the cover, and the cover uses real vertices."""
     cover = cover_fn(graph)
     assert is_vertex_cover(graph, cover)
     assert cover <= set(graph.vertices())
 
 
 def test_input_graph_not_modified(cover_fn):
+    """The algorithms only read the graph; its edges are unchanged afterwards."""
     graph = random_graph(20, 0.3, seed=2)
     edges_before = sorted(graph.edges())
     cover_fn(graph)
@@ -96,35 +91,39 @@ def test_input_graph_not_modified(cover_fn):
 
 @pytest.mark.parametrize("seed", range(20))
 def test_basic_is_2_approximation(seed):
+    """The basic cover is at most twice the brute-force optimum."""
     graph = random_graph(10, 0.35, seed=seed)
     assert len(basic_vertex_cover(graph)) <= 2 * min_cover_size(graph)
 
 
 def test_basic_cover_has_even_size():
-    # It always adds both endpoints of an edge, so the size is even.
+    """The basic algorithm adds two vertices at a time, so the size is even."""
     for seed in range(10):
         assert len(basic_vertex_cover(random_graph(30, 0.2, seed))) % 2 == 0
 
 
 def test_basic_on_star_takes_one_edge():
+    """On a star the first edge covers everything: center + one leaf."""
     assert len(basic_vertex_cover(star(10))) == 2
 
 
 # --- randomized algorithm -----------------------------------------------------
 
 def test_randomized_same_seed_same_result():
+    """The same seed gives the same cover, so runs are reproducible."""
     graph = random_graph(50, 0.1, seed=3)
     assert randomized_vertex_cover(graph, seed=7) == randomized_vertex_cover(graph, seed=7)
 
 
 def test_randomized_valid_for_many_seeds():
+    """Whatever the coin flips, the output is always a valid cover."""
     graph = random_graph(30, 0.2, seed=4)
     for seed in range(50):
         assert is_vertex_cover(graph, randomized_vertex_cover(graph, seed=seed))
 
 
 def test_randomized_average_within_factor_2():
-    # The guarantee is on the expected size, so check the mean over many seeds.
+    """The guarantee is on the expected size, so check the mean over 200 seeds."""
     graph = random_graph(10, 0.4, seed=5)
     sizes = [len(randomized_vertex_cover(graph, seed=s)) for s in range(200)]
     assert sum(sizes) / len(sizes) <= 2 * min_cover_size(graph)

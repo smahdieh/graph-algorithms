@@ -16,7 +16,6 @@ import argparse
 import csv
 import json
 import platform
-import random
 import statistics
 import sys
 import time
@@ -34,6 +33,7 @@ from graph_algorithms.coloring import (  # noqa: E402
     smallest_last_coloring,
     smallest_last_order,
 )
+from graph_algorithms.generators import random_sparse_graph  # noqa: E402
 from graph_algorithms.graph import Graph, load_dimacs  # noqa: E402
 from graph_algorithms.vertex_cover import (  # noqa: E402
     basic_vertex_cover,
@@ -59,23 +59,6 @@ ALGORITHMS: dict[str, tuple[str, Callable[[Graph, int], object]]] = {
     # The ordering alone, to measure its cost separately from the coloring.
     "smallest_last_order": ("ordering", lambda g, s: smallest_last_order(g)),
 }
-
-
-def random_sparse_graph(n: int, avg_degree: float, seed: int) -> Graph:
-    """Random graph with n vertices and about n * avg_degree / 2 edges.
-
-    Input:  n -- number of vertices; avg_degree -- target average degree;
-            seed -- random seed.
-    Output: a Graph whose edges are distinct random pairs (G(n, m) model).
-    """
-    rng = random.Random(seed)
-    graph = Graph(n)
-    target = int(n * avg_degree / 2)
-    while graph.num_edges < target:
-        u, v = rng.randrange(n), rng.randrange(n)
-        if u != v:
-            graph.add_edge(u, v)
-    return graph
 
 
 def result_size(problem: str, graph: Graph, output: object) -> int | None:
