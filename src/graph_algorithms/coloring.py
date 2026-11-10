@@ -28,17 +28,20 @@ def greedy_coloring(graph: Graph, order: Sequence[int] | None = None) -> list[in
     if order is None:
         order = range(n)
     colors = [-1] * n  # -1 means "not colored yet"
-    # TODO (step 4): implement.
-    # For each vertex v in `order`:
-    #   1. Collect the colors already used by v's neighbors
-    #      (graph.neighbors(v); skip neighbors whose color is -1).
-    #   2. Find the smallest color 0, 1, 2, ... not in that collection.
-    #   3. Set colors[v] to it.
-    # Return `colors`.
-    # To get O(V + E) time, avoid building a new set per vertex: keep one
-    # list `marked_by` of size n + 1 and set marked_by[c] = v for each
-    # neighbor color c; then color c is taken for v iff marked_by[c] == v.
-    raise NotImplementedError
+    # marked_by[c] == v means color c is used by a neighbor of v. Storing v
+    # instead of True means the list never has to be cleared between
+    # vertices. A vertex has at most n - 1 neighbors, so colors 0 .. n are
+    # enough. Time O(V + E): vertex v costs O(deg(v)). Space O(V).
+    marked_by = [-1] * (n + 1)
+    for v in order:
+        for u in graph.neighbors(v):
+            if colors[u] != -1:
+                marked_by[colors[u]] = v
+        color = 0
+        while marked_by[color] == v:
+            color += 1
+        colors[v] = color
+    return colors
 
 
 def smallest_last_order(graph: Graph) -> list[int]:
@@ -54,19 +57,31 @@ def smallest_last_order(graph: Graph) -> list[int]:
     """
     n = graph.num_vertices
     degree = [graph.degree(v) for v in range(n)]
-    # TODO (step 4): implement with a bucket queue, O(V + E) time.
-    # 1. buckets[d] = set of vertices whose current degree is d
-    #    (d goes from 0 to graph.max_degree()).
-    # 2. Repeat n times:
-    #    a. Find the smallest d with a non-empty bucket (keep a pointer
-    #       `min_deg`; it only needs to move back by 1 after a removal).
-    #    b. Pop a vertex v from buckets[d], mark it removed, append it to
-    #       `removal_order`.
-    #    c. For each neighbor u of v that is not removed yet: move u from
-    #       buckets[degree[u]] to buckets[degree[u] - 1] and decrease
-    #       degree[u].
-    # 3. Return removal_order reversed.
-    raise NotImplementedError
+    # Bucket queue: buckets[d] holds the remaining vertices whose current
+    # degree is d. Removing a vertex lowers each remaining neighbor's
+    # degree by one, so the minimum degree drops by at most one per
+    # removal; the pointer min_deg therefore moves O(V + E) steps in total.
+    # Time O(V + E), space O(V).
+    buckets: list[set[int]] = [set() for _ in range(graph.max_degree() + 1)]
+    for v in range(n):
+        buckets[degree[v]].add(v)
+    removed = [False] * n
+    removal_order: list[int] = []
+    min_deg = 0
+    for _ in range(n):
+        while not buckets[min_deg]:
+            min_deg += 1
+        v = buckets[min_deg].pop()
+        removed[v] = True
+        removal_order.append(v)
+        for u in graph.neighbors(v):
+            if not removed[u]:
+                buckets[degree[u]].remove(u)
+                degree[u] -= 1
+                buckets[degree[u]].add(u)
+        min_deg = max(min_deg - 1, 0)
+    removal_order.reverse()
+    return removal_order
 
 
 def smallest_last_coloring(graph: Graph) -> list[int]:
